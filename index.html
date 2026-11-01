@@ -98,7 +98,10 @@
   .momentum .mo-main .fire{font-size:18px;}
   .momentum .mo-sub{font-family:var(--label);font-size:12.5px;color:var(--ink-soft);text-align:right;}
   .momentum .mo-sub b{color:var(--build);font-weight:600;}
-  .momentum.tap{cursor:pointer;} .momentum .mo-go{font-family:var(--body);font-weight:600;font-size:12px;color:var(--build);margin-top:3px;}
+  .momentum.tap{cursor:pointer;} .momentum .mo-go{display:inline-flex;align-items:center;gap:6px;font-family:var(--body);font-weight:600;font-size:13px;color:var(--build);background:var(--build-soft);border:1px solid var(--build);border-radius:999px;padding:6px 14px;margin-top:10px;box-shadow:0 1px 2px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.05);transition:background .15s,color .15s,border-color .15s,box-shadow .15s;}
+  .momentum.tap:hover .mo-go{background:linear-gradient(135deg,#63C6D6,#5AA8FF);color:#fff;border-color:transparent;box-shadow:0 2px 10px rgba(74,166,184,.34),0 0 16px rgba(90,168,255,.30);}
+  .momentum .mo-go .mo-arrow{font-size:15px;line-height:1;transition:transform .15s;}
+  .momentum.tap:hover .mo-go .mo-arrow{transform:translateX(2px);}
   /* leaderboard */
   .lb-you{background:var(--build-soft);border:1px solid var(--build);border-radius:14px;padding:15px 18px;margin:16px 0 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
   .lb-you .r{font-family:var(--display);font-weight:750;font-size:22px;color:var(--build);}
@@ -1069,7 +1072,7 @@
     if(banked>0)subBits.push('<b>'+banked+'</b> marks banked');
     subBits.push('<b>'+sat+'</b> test'+(sat===1?'':'s')+' sat');
     if(streak===0 && sat>0)subBits.push('revise today to start a streak');
-    el.innerHTML='<div class="momentum tap"><div><div class="mo-main">'+main+'</div><div class="mo-go">View your effort →</div></div><div class="mo-sub">'+subBits.join(' · ')+'</div></div>';
+    el.innerHTML='<div class="momentum tap"><div><div class="mo-main">'+main+'</div><div class="mo-go">View your effort score <span class="mo-arrow">›</span></div></div><div class="mo-sub">'+subBits.join(' · ')+'</div></div>';
     var m=$(".momentum",el); if(m)m.addEventListener("click",openLeaderboard);
   }
   function renderDue(){
