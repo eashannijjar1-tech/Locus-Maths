@@ -1068,9 +1068,10 @@
     var nm=state.name?(", "+state.name.split(" ")[0]):"";
     var main = streak>0 ? '<span class="mo-num">'+streak+'</span> <span class="shine">day streak</span>'
              : (sat>0 ? '<span class="shine">Welcome back'+nm+'</span>' : '<span class="shine">Let’s begin'+nm+'</span>');
+    var days=(state.activeDays||[]).length, xp=xpOf(days,sat,banked);
     var subBits=[];
+    subBits.push('<b>'+xp+'</b> XP');
     if(banked>0)subBits.push('<b>'+banked+'</b> marks banked');
-    subBits.push('<b>'+sat+'</b> test'+(sat===1?'':'s')+' sat');
     if(streak===0 && sat>0)subBits.push('revise today to start a streak');
     el.innerHTML='<div class="momentum tap"><div><div class="mo-main">'+main+'</div><div class="mo-go">View your effort score <span class="mo-arrow">›</span></div></div><div class="mo-sub">'+subBits.join(' · ')+'</div></div>';
     var m=$(".momentum",el); if(m)m.addEventListener("click",openLeaderboard);
