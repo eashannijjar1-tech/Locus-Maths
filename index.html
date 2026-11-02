@@ -598,7 +598,7 @@
     var dismissed=false; try{dismissed=localStorage.getItem(NOTE_KEY)==="1";}catch(e){}
     if(!SB_READY || CURUSER || dismissed){ n.className=""; n.innerHTML=""; return; }
     n.className="acct-note";
-    n.innerHTML='<span class="an-txt"><b>Your progress is saved on this device only.</b> Sign in to keep it synced across your phone and laptop.</span>'+
+    n.innerHTML='<span class="an-txt"><b>You’re using Locus as a guest.</b> Sign in to save your progress and sync it across your devices.</span>'+
                 '<button class="an-cta" id="anCta">Sign in</button><button class="an-x" id="anX" aria-label="Dismiss">&times;</button>';
     var c=document.getElementById("anCta"), x=document.getElementById("anX");
     if(c)c.addEventListener("click",function(){showAuth();});
@@ -9817,12 +9817,9 @@
   (function(){var ts=$("#trackSwitch"); if(ts)ts.addEventListener("click",function(){showTrackChoice();});})();
   renderDashboard();
   function onboardCheck(){
-    // Signed-in users skip onboarding entirely; just pick a course if they have none.
-    if(CURUSER){ if(!state.track) showTrackChoice(); return; }
-    // First-time, logged-out visitor: open the sign-in / create-account page (skippable to guest).
-    if(!hasOnboarded()){ showAuth({first:true}); return; }
-    // Returning guest: no sign-in wall, just make sure a course is chosen.
-    if(!state.track) showTrackChoice();
+    // No sign-in wall and no forced course picker: everyone lands straight on the
+    // dashboard and can use Locus immediately. Signing in is optional (the top-right
+    // pill + the sync nudge), and the course is switchable any time from the top.
   }
   (function initAuth(){
     wireAuthButton();
