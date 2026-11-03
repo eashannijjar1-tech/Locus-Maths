@@ -1162,21 +1162,26 @@
     if(t==="learn")setTimeout(redrawVisible,30);
   });});
 
-  /* ================= AI tutor (sample capability) ================= */
-  var SAMPLE_RESOLVED=false, SAMPLE=null, IMG_OK=false;
-  function getSample(){
-    if(SAMPLE_RESOLVED) return Promise.resolve(SAMPLE);
-    SAMPLE_RESOLVED=true;
+  /* ================= AI tutor (Locus backend: /api/tutor) ================= */
+  // Which model answers. Flip live with ?tutor=openai or ?tutor=anthropic (remembered).
+  function tutorProvider(){
     try{
-      if(window.claude && typeof window.claude.use==="function"){
-        return window.claude.use("sample").then(function(s){
-          SAMPLE=s||null;
-          if(SAMPLE&&SAMPLE.limits){return SAMPLE.limits().then(function(l){IMG_OK=!!(l&&l.images);return SAMPLE;},function(){return SAMPLE;});}
-          return SAMPLE;
-        },function(){SAMPLE=null;return null;});
-      }
+      var u=new URLSearchParams(location.search).get("tutor");
+      if(u==="openai"||u==="anthropic"){ localStorage.setItem("locus_tutor_provider",u); return u; }
+      var s=localStorage.getItem("locus_tutor_provider");
+      if(s==="openai"||s==="anthropic") return s;
     }catch(e){}
-    SAMPLE=null; return Promise.resolve(null);
+    return "openai";
+  }
+  function fileToB64(file){
+    return new Promise(function(resolve){
+      try{
+        var r=new FileReader();
+        r.onload=function(){ var s=String(r.result||""); var i=s.indexOf(","); resolve({media_type:(file.type||"image/jpeg"), data:i>=0?s.slice(i+1):s}); };
+        r.onerror=function(){ resolve(null); };
+        r.readAsDataURL(file);
+      }catch(e){ resolve(null); }
+    });
   }
   function tutorRules(ctx,mode){
     var r;
@@ -1197,28 +1202,39 @@
     var history=[],pendingImg=null,busy=false,RULES=tutorRules(ctx,mode);
     var fileInp=document.createElement("input");fileInp.type="file";fileInp.accept="image/*";fileInp.style.display="none";host.appendChild(fileInp);
     function bubble(cls,txt){var d=document.createElement("div");d.className="b "+cls;d.textContent=txt;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;return d;}
-    photoBtn.addEventListener("click",function(){ if(!IMG_OK){bubble("sys","Photos aren't available in this view, describe your working in words instead.");return;} fileInp.click();});
+    photoBtn.addEventListener("click",function(){ fileInp.click();});
     fileInp.addEventListener("change",function(){ if(fileInp.files&&fileInp.files[0]){pendingImg=fileInp.files[0];bubble("sys","Photo attached, it'll go with your next message.");}});
     function send(){
       if(busy)return; var text=ta.value.trim(); if(!text&&!pendingImg)return;
       busy=true; snd.disabled=true; ta.value="";
       if(text||pendingImg) bubble("you",(text||"(see my working)")+(pendingImg?"  (photo)":""));
-      getSample().then(function(s){
-        if(!s){ bubble("sys","The tutor needs an active Claude account. Sign in at claude.ai first, then open Locus in that same browser (not from the home-screen icon) and tap Ask the tutor again, allowing the pop-up. Everything else here works without it."); busy=false; snd.disabled=false; return; }
-        history.push({role:"user",content:text||"(see the attached photo of my working)"});
-        var turns=[{role:"user",content:RULES}].concat(history);
-        if(turns.length>10) turns=[turns[0]].concat(turns.slice(turns.length-8));
-        var out=bubble("tut","…"),ctl=new AbortController();
-        var opts={cache:false,signal:ctl.signal,onText:function(u){out.textContent=u.text;msgs.scrollTop=msgs.scrollHeight;}};
-        if(pendingImg){opts.images=pendingImg;} pendingImg=null;
-        s(turns,opts).then(function(res){ history.push({role:"assistant",content:res.text}); out.innerHTML=esc(res.text); mj(out); },function(e){
-          var c=e&&e.code;
-          if(c==="cancelled"){ if(e.text)out.textContent=e.text; }
-          else if(c==="not_granted"||c==="sampling_disabled"){ out.textContent="You'll need to allow the app to use Claude for the tutor to work."; }
-          else if(c==="rate_limited"){ out.textContent="A lot of messages just now, give it a moment, then try again."; }
-          else { out.textContent=(e&&e.text)?e.text:"Something went wrong reaching the tutor, try again in a sec."; }
-        }).then(function(){ busy=false; snd.disabled=false; });
-      });
+      history.push({role:"user",content:text||"(see the attached photo of my working)"});
+      var msgsOut=history.slice(); if(msgsOut.length>12) msgsOut=msgsOut.slice(msgsOut.length-12);
+      var out=bubble("tut","…"),ctl=new AbortController();
+      var imgFile=pendingImg; pendingImg=null;
+      Promise.resolve(imgFile?fileToB64(imgFile):null).then(function(img){
+        return fetch("/api/tutor",{method:"POST",headers:{"Content-Type":"application/json"},signal:ctl.signal,
+          body:JSON.stringify({provider:tutorProvider(),system:RULES,messages:msgsOut,image:img})});
+      }).then(function(res){
+        if(!res.ok){
+          return res.text().then(function(t){ var m=""; try{m=JSON.parse(t).message||"";}catch(e){}
+            if(res.status===429) out.textContent="A lot of messages just now, give it a moment, then try again.";
+            else if(res.status===503) out.textContent=m||"The tutor isn't switched on just yet.";
+            else if(res.status===403) out.textContent="The tutor can only be used from locusmaths.com.";
+            else out.textContent=m||"Something went wrong reaching the tutor, try again in a sec.";
+            throw new Error("http "+res.status);
+          });
+        }
+        var reader=res.body.getReader(),dec=new TextDecoder(),acc=""; out.textContent="";
+        function pump(){ return reader.read().then(function(r){
+          if(r.done){ history.push({role:"assistant",content:acc}); out.innerHTML=esc(acc); mj(out); return; }
+          acc+=dec.decode(r.value,{stream:true}); out.textContent=acc; msgs.scrollTop=msgs.scrollHeight; return pump();
+        }); }
+        return pump();
+      }).catch(function(e){
+        if(e&&e.name==="AbortError") return;
+        if(out.textContent==="…"||out.textContent==="") out.textContent="Couldn't reach the tutor just now, check your connection and try again.";
+      }).then(function(){ busy=false; snd.disabled=false; });
     }
     snd.addEventListener("click",send);
     ta.addEventListener("keydown",function(e){ if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}});

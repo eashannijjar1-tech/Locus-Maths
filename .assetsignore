@@ -1,0 +1,5 @@
+src
+wrangler.jsonc
+.assetsignore
+netlify.toml
+README.md
