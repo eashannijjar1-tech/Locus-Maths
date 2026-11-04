@@ -74,9 +74,9 @@ async function handleTutor(request, env) {
   // rate limiting + the spending cap are the real protection against scripts.)
   const ref = request.headers.get("Referer") || "";
   if (origin) {
-    if (!allowedHost(hostOf(origin))) return json({ error: "forbidden", message: "The tutor can only be used from locusmaths.com." }, 403, ch);
+    if (!allowedHost(hostOf(origin))) return json({ error: "forbidden", message: "Axi can only be used from locusmaths.com." }, 403, ch);
   } else if (ref) {
-    if (!allowedHost(hostOf(ref))) return json({ error: "forbidden", message: "The tutor can only be used from locusmaths.com." }, 403, ch);
+    if (!allowedHost(hostOf(ref))) return json({ error: "forbidden", message: "Axi can only be used from locusmaths.com." }, 403, ch);
   }
 
   let body;
@@ -109,13 +109,13 @@ async function handleTutor(request, env) {
     if (provider === "anthropic") return await callAnthropic(env, ch, system, messages, image);
     return await callOpenAI(env, ch, system, messages, image);
   } catch (e) {
-    return json({ error: "upstream_error", message: "Something went wrong reaching the tutor.", detail: String((e && e.message) || e) }, 502, ch);
+    return json({ error: "upstream_error", message: "Something went wrong reaching Axi.", detail: String((e && e.message) || e) }, 502, ch);
   }
 }
 
 async function callOpenAI(env, ch, system, messages, image) {
   const key = env.OPENAI_API_KEY;
-  if (!key) return json({ error: "not_configured", message: "The tutor isn't switched on just yet." }, 503, ch);
+  if (!key) return json({ error: "not_configured", message: "Axi isn't switched on just yet." }, 503, ch);
   const model = env.OPENAI_MODEL || "gpt-4o-mini";
 
   const oa = [{ role: "system", content: system }];
@@ -140,19 +140,19 @@ async function callOpenAI(env, ch, system, messages, image) {
   const data = await res.json().catch(function () { return null; });
   if (!res.ok || !data) {
     const msg = (data && data.error && data.error.message) || ("OpenAI returned status " + res.status);
-    return json({ error: "openai_error", status: res.status, message: "The tutor had a problem: " + msg }, 502, ch);
+    return json({ error: "openai_error", status: res.status, message: "Axi had a problem: " + msg }, 502, ch);
   }
   const text = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
   if (!text) {
     const fr = (data.choices && data.choices[0] && data.choices[0].finish_reason) || "unknown";
-    return json({ error: "empty_reply", message: "The tutor came back empty (finish: " + fr + ").", raw: data }, 502, ch);
+    return json({ error: "empty_reply", message: "Axi came back empty (finish: " + fr + ").", raw: data }, 502, ch);
   }
   return textReply(text, ch);
 }
 
 async function callAnthropic(env, ch, system, messages, image) {
   const key = env.ANTHROPIC_API_KEY;
-  if (!key) return json({ error: "not_configured", message: "The tutor isn't switched on just yet." }, 503, ch);
+  if (!key) return json({ error: "not_configured", message: "Axi isn't switched on just yet." }, 503, ch);
   const model = env.ANTHROPIC_MODEL || "claude-3-5-haiku-latest";
 
   const am = messages.map(function (m, i) {
@@ -175,7 +175,7 @@ async function callAnthropic(env, ch, system, messages, image) {
   const data = await res.json().catch(function () { return null; });
   if (!res.ok || !data) {
     const msg = (data && data.error && data.error.message) || ("Anthropic returned status " + res.status);
-    return json({ error: "anthropic_error", status: res.status, message: "The tutor had a problem: " + msg }, 502, ch);
+    return json({ error: "anthropic_error", status: res.status, message: "Axi had a problem: " + msg }, 502, ch);
   }
   let text = "";
   if (Array.isArray(data.content)) {
@@ -184,7 +184,7 @@ async function callAnthropic(env, ch, system, messages, image) {
     }
   }
   if (!text) {
-    return json({ error: "empty_reply", message: "The tutor came back empty.", raw: data }, 502, ch);
+    return json({ error: "empty_reply", message: "Axi came back empty.", raw: data }, 502, ch);
   }
   return textReply(text, ch);
 }

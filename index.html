@@ -449,7 +449,7 @@
       <button id="resetBtn">Reset all data</button>
     </div>
     <div class="foot">
-      <b>How your score is set:</b> a <b>topic test</b> (a proper 30-mark paper marked line-by-line, M1/A1 style) is the real measure, it overrides everything. Before you've sat one, a quick confidence tap gives a rough colour. "Revise next" always lists your weakest topics first. Everything saves in this browser.
+      <b>How your score is set:</b> a <b>topic test</b> (a proper 30-mark paper marked line-by-line, M1/A1 style) is the real measure, it overrides everything. Before you've sat one, a quick Pulse gives a rough colour. "Revise next" always lists your weakest topics first. Everything saves in this browser.
     </div>
   </section>
 
@@ -883,7 +883,7 @@
       var rb=$(".rev",el),sl=$(".sol",el);
       rb.addEventListener("click",function(){var o=sl.classList.toggle("show");rb.textContent=o?"Hide solution":"Reveal solution";});
       var q=plainFrom(pq.q), ref=pq.steps.map(function(s){return s.t?stripHtml(s.t):(s.m?texPlain(s.m):(s.ans?texPlain(s.ans):""));}).filter(Boolean).join(" ");
-      var btn=document.createElement("button");btn.className="askbtn";btn.textContent="Ask the tutor";
+      var btn=document.createElement("button");btn.className="askbtn";btn.textContent="Ask Axi";
       var thost=document.createElement("div");thost.hidden=true;
       el.appendChild(btn);el.appendChild(thost);
       btn.addEventListener("click",function(){ mountTutor(thost,{question:q,reference:ref},"practice"); });
@@ -978,7 +978,7 @@
     return '<div class="msrow '+(got?'earned':'missed')+'"><div class="work">'+lines+crit+'</div><div class="cell"><span class="markchip '+cls+'">'+rw.mark+'</span><span class="gotmark">'+(got?'✓':'✗')+'</span></div></div>';
   }
   function reviewHtml(topic,perQ){
-    return '<h2 style="margin-top:24px">Review your paper</h2><p class="lead" style="margin-top:2px">Every mark you earned is ticked; the ones you missed are crossed, that’s exactly what to go back over, and you can ask the tutor about any of them below.</p>'+
+    return '<h2 style="margin-top:24px">Review your paper</h2><p class="lead" style="margin-top:2px">Every mark you earned is ticked; the ones you missed are crossed, that’s exactly what to go back over, and you can ask Axi about any of them below.</p>'+
     topic.test.map(function(t,i){
       var tot=qTotal(t), checks=perQ[i].checks, ci=0;
       var groups=t.parts?t.parts:[{p:null,scheme:t.scheme}];
@@ -1009,7 +1009,7 @@
       var msg = pct>=85?"Strong, this topic's in good shape.":pct>=70?"Solid, but a few marks to chase.":pct>=50?"Getting there, worth another pass.":"This one needs real work, it's now top of your Revise-next.";
       $("#test-done").hidden=false;
       $("#test-done").innerHTML='<div class="result"><h3>'+total+' / '+TOTAL+'</h3><p>'+pct+'% · attempt '+attempt+' · logged to the Radar</p><p>'+msg+'</p></div>'+
-        '<button id="tutorReview" class="askbtn" style="margin:2px 0 8px">Review a question with the tutor</button><div id="reviewHost" hidden></div>'+
+        '<button id="tutorReview" class="askbtn" style="margin:2px 0 8px">Review a question with Axi</button><div id="reviewHost" hidden></div>'+
         reviewHtml(topic,perQ)+
         '<div class="tools" style="margin-top:20px"><button id="retake">Retake test</button><button id="toradar" class="open">Back to Radar ▸</button></div>';
       mj($("#test-done"));
@@ -1028,14 +1028,14 @@
   function renderStats(){
     var ts=allTopics(),rated=0,strong=0,shaky=0,tested=0;
     ts.forEach(function(t){var e=eff(t.id);if(e!==null)rated++;if(e!==null&&e>=85)strong++;if(colorOf(e)==="red")shaky++;if(bestTest(t.id)!==null)tested++;});
-    $("#stats").innerHTML=stat(rated+"/"+ts.length,"topics rated","a")+stat(tested,"tests sat","")+stat(strong,"green","g")+stat(shaky,"red","r");
+    $("#stats").innerHTML=stat(rated+"/"+ts.length,"pulsed","a")+stat(tested,"tests sat","")+stat(strong,"green","g")+stat(shaky,"red","r");
   }
   function stat(v,l,c){return '<div class="stat '+c+'"><div class="v">'+v+'</div><div class="l">'+l+'</div></div>';}
   function renderRevise(){
     var ts=allTopics().map(function(t){t.e=eff(t.id);return t;}).filter(function(t){return t.e!==null;});
     ts.sort(function(a,b){return a.e-b.e;});
     var weak=ts.slice(0,5), el=$("#revise");
-    if(!weak.length){el.innerHTML='<h3>Revise next</h3><p class="hint">Rate a topic or sit a test and your weakest ones surface here.</p>';return;}
+    if(!weak.length){el.innerHTML='<h3>Revise next</h3><p class="hint">Take a Pulse on a topic or sit a test and your weakest ones surface here.</p>';return;}
     el.innerHTML='<h3>Revise next</h3><p class="hint">Weakest first, start at the top.</p>'+weak.map(function(t){var c=colorOf(t.e);
       return '<div class="ritem"><div class="nm">'+t.name+' <small>'+t.mod+'</small></div><div class="rbar"><span style="width:'+Math.max(4,Math.round(t.e))+'%;background:'+cvar(c)+'"></span></div><div class="pct">'+Math.round(t.e)+'%</div></div>';}).join("");
   }
@@ -1186,9 +1186,9 @@
   function tutorRules(ctx,mode){
     var r;
     if(mode==="review"){
-      r="You are a warm, encouraging Edexcel A-level Further Maths tutor helping a student REVIEW questions from a test they just sat. Explain where they likely went wrong and rebuild the understanding, but coach with guiding questions and one step at a time rather than lecturing. Keep replies short (2–4 sentences) and kind. Only discuss these questions and their maths. If they send a photo of their working, find the specific slip.";
+      r="You are Axi, a warm, encouraging Edexcel A-level Further Maths tutor helping a student REVIEW questions from a test they just sat. Explain where they likely went wrong and rebuild the understanding, but coach with guiding questions and one step at a time rather than lecturing. Keep replies short (2–4 sentences) and kind. Only discuss these questions and their maths. If they send a photo of their working, find the specific slip.";
     }else{
-      r="You are a warm, encouraging Edexcel A-level Further Maths tutor helping a student with ONE question. Rules: 1) NEVER give the full worked solution or final answer unless they explicitly ask for the full method or clearly give up. 2) Start with the SMALLEST useful nudge, a guiding question or which idea to reach for; escalate to a bigger hint, then ONE worked step, only if they're still stuck. 3) Keep replies short (2–4 sentences), plain and kind, usually ending by asking what they get. 4) Only discuss THIS question and its maths; gently redirect anything else. 5) If they send a photo of their working, find the specific slip and point to it, don't just redo it.";
+      r="You are Axi, a warm, encouraging Edexcel A-level Further Maths tutor helping a student with ONE question. Rules: 1) NEVER give the full worked solution or final answer unless they explicitly ask for the full method or clearly give up. 2) Start with the SMALLEST useful nudge, a guiding question or which idea to reach for; escalate to a bigger hint, then ONE worked step, only if they're still stuck. 3) Keep replies short (2–4 sentences), plain and kind, usually ending by asking what they get. 4) Only discuss THIS question and its maths; gently redirect anything else. 5) If they send a photo of their working, find the specific slip and point to it, don't just redo it.";
     }
     var FMT="Always write ALL mathematics in LaTeX so it renders as proper notation, never as keyboard text: put inline maths between \\( and \\), and any standalone line of working between \\[ and \\] on its own line. Never write a fraction with a slash like 1/(r+1), always use \\frac{a}{b}. Use ^{ } for powers, \\sqrt{ }, \\int, \\sum, \\theta, \\pi and proper symbols. Put each step of working on its own line so it is easy to follow.";
     return r+" "+FMT+"\n\nThe question(s):\n"+ctx.question+"\n\nFor your private reference ONLY, do not reveal unless they ask for the full solution:\n"+ctx.reference+"\n\nBegin.";
@@ -1196,7 +1196,7 @@
   function mountTutor(host,ctx,mode){
     if(host.__mounted){host.hidden=!host.hidden;return;}
     host.__mounted=true; host.hidden=false;
-    host.innerHTML='<div class="tutor"><div class="tbar"><span>Tutor · hints, not answers</span><button class="ic" data-close style="padding:2px 9px;font-size:12px">close</button></div><div class="tmsgs"></div><div class="tin"><button class="ic" data-photo title="Attach a photo of your working"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8.5A1.5 1.5 0 0 1 4.5 7H7l1-1.5h8L17 7h2.5A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5v-9Z"/><circle cx="12" cy="13" r="3.2"/></svg></button><textarea rows="1" placeholder="What have you tried, or where are you stuck?"></textarea><button class="snd">Send</button></div></div>';
+    host.innerHTML='<div class="tutor"><div class="tbar"><span>Axi · hints, not answers</span><button class="ic" data-close style="padding:2px 9px;font-size:12px">close</button></div><div class="tmsgs"></div><div class="tin"><button class="ic" data-photo title="Attach a photo of your working"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8.5A1.5 1.5 0 0 1 4.5 7H7l1-1.5h8L17 7h2.5A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5v-9Z"/><circle cx="12" cy="13" r="3.2"/></svg></button><textarea rows="1" placeholder="What have you tried, or where are you stuck?"></textarea><button class="snd">Send</button></div></div>';
     var msgs=host.querySelector(".tmsgs"),ta=host.querySelector("textarea"),snd=host.querySelector(".snd"),photoBtn=host.querySelector("[data-photo]");
     host.querySelector("[data-close]").addEventListener("click",function(){host.hidden=true;});
     var history=[],pendingImg=null,busy=false,RULES=tutorRules(ctx,mode);
@@ -1219,9 +1219,9 @@
         if(!res.ok){
           return res.text().then(function(t){ var m=""; try{m=JSON.parse(t).message||"";}catch(e){}
             if(res.status===429) out.textContent="A lot of messages just now, give it a moment, then try again.";
-            else if(res.status===503) out.textContent=m||"The tutor isn't switched on just yet.";
-            else if(res.status===403) out.textContent="The tutor can only be used from locusmaths.com.";
-            else out.textContent=m||"Something went wrong reaching the tutor, try again in a sec.";
+            else if(res.status===503) out.textContent=m||"Axi isn't switched on just yet.";
+            else if(res.status===403) out.textContent="Axi can only be used from locusmaths.com.";
+            else out.textContent=m||"Something went wrong reaching Axi, try again in a sec.";
             throw new Error("http "+res.status);
           });
         }
@@ -1233,12 +1233,12 @@
         return pump();
       }).catch(function(e){
         if(e&&e.name==="AbortError") return;
-        if(out.textContent==="…"||out.textContent==="") out.textContent="Couldn't reach the tutor just now, check your connection and try again.";
+        if(out.textContent==="…"||out.textContent==="") out.textContent="Couldn't reach Axi just now, check your connection and try again.";
       }).then(function(){ busy=false; snd.disabled=false; });
     }
     snd.addEventListener("click",send);
     ta.addEventListener("keydown",function(e){ if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}});
-    bubble("sys", mode==="review"?"Ask me about any question from the test, I'll help you see where the marks went.":"Stuck? Tell me what you've tried and I'll nudge you, I won't just hand over the answer.");
+    bubble("sys", mode==="review"?"I'm Axi. Ask me about any question from the test and I'll help you see where the marks went.":"I'm Axi. Stuck? Tell me what you've tried and I'll nudge you, I won't just hand over the answer.");
   }
 
   /* ==================================================================
@@ -9798,7 +9798,7 @@
       '<input id="welName" type="text" autocomplete="given-name" maxlength="24" placeholder="First name" enterkeyhint="go">'+
       '<div class="flow">'+
         '<div class="fstep"><span class="fn">1</span><span class="ft"><b>Learn</b>, each topic broken into bite-size ideas, worked through step by step.</span></div>'+
-        '<div class="fstep"><span class="fn">2</span><span class="ft"><b>Practice</b>, drill every sub-skill, with full line-by-line solutions and a tutor to ask.</span></div>'+
+        '<div class="fstep"><span class="fn">2</span><span class="ft"><b>Practice</b>, drill every sub-skill, with full line-by-line solutions and Axi to ask.</span></div>'+
         '<div class="fstep"><span class="fn">3</span><span class="ft"><b>Test</b>, a proper 30-mark paper you mark yourself, Edexcel-style.</span></div>'+
         '<div class="fstep"><span class="fn">4</span><span class="ft"><b>Radar</b>, your scores map your weak spots and tell you what to revise next.</span></div>'+
       '</div>'+
