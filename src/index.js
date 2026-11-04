@@ -5,7 +5,7 @@
  * server-side endpoint, POST /api/tutor, which proxies the AI
  * tutor to OpenAI or Anthropic. The provider API key lives ONLY
  * as a Worker secret (OPENAI_API_KEY / ANTHROPIC_API_KEY), never
- * in the client. The reply is streamed back as plain text.
+ * in the client. The full reply is returned as plain text.
  *
  * Safeguards: origin lock (browser calls must come from our site),
  * strict size caps on input, and a graceful "not configured" state
@@ -30,6 +30,13 @@ function json(obj, status, extra) {
   return new Response(JSON.stringify(obj), {
     status: status,
     headers: Object.assign({ "Content-Type": "application/json", "Cache-Control": "no-store" }, extra || {})
+  });
+}
+
+function textReply(text, ch) {
+  return new Response(text, {
+    status: 200,
+    headers: Object.assign({ "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" }, ch)
   });
 }
 
@@ -102,34 +109,8 @@ async function handleTutor(request, env) {
     if (provider === "anthropic") return await callAnthropic(env, ch, system, messages, image);
     return await callOpenAI(env, ch, system, messages, image);
   } catch (e) {
-    return json({ error: "upstream_error", message: String((e && e.message) || e) }, 502, ch);
+    return json({ error: "upstream_error", message: "Something went wrong reaching the tutor.", detail: String((e && e.message) || e) }, 502, ch);
   }
-}
-
-/* ---- Turn a provider SSE byte stream into a plain-text delta stream ---- */
-function sseToText(body, extract) {
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
-  const encoder = new TextEncoder();
-  let buf = "";
-  return new ReadableStream({
-    async pull(controller) {
-      const r = await reader.read();
-      if (r.done) { controller.close(); return; }
-      buf += decoder.decode(r.value, { stream: true });
-      let idx;
-      while ((idx = buf.indexOf("\n")) >= 0) {
-        let line = buf.slice(0, idx); buf = buf.slice(idx + 1);
-        if (line.charCodeAt(line.length - 1) === 13) line = line.slice(0, -1); // strip \r
-        if (line.indexOf("data:") !== 0) continue;
-        const data = line.slice(5).trim();
-        if (data === "[DONE]") { controller.close(); return; }
-        const text = extract(data);
-        if (text) controller.enqueue(encoder.encode(text));
-      }
-    },
-    cancel() { try { reader.cancel(); } catch (e) {} }
-  });
 }
 
 async function callOpenAI(env, ch, system, messages, image) {
@@ -153,17 +134,20 @@ async function callOpenAI(env, ch, system, messages, image) {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { "Authorization": "Bearer " + key, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: model, stream: true, max_tokens: 600, temperature: 0.4, messages: oa })
+    body: JSON.stringify({ model: model, max_tokens: 600, temperature: 0.4, messages: oa })
   });
-  if (!res.ok) {
-    const t = await res.text();
-    return json({ error: "openai_error", status: res.status, message: "The tutor had a problem (OpenAI " + res.status + ")." , detail: t.slice(0, 400) }, 502, ch);
+
+  const data = await res.json().catch(function () { return null; });
+  if (!res.ok || !data) {
+    const msg = (data && data.error && data.error.message) || ("OpenAI returned status " + res.status);
+    return json({ error: "openai_error", status: res.status, message: "The tutor had a problem: " + msg }, 502, ch);
   }
-  const stream = sseToText(res.body, function (data) {
-    try { const j = JSON.parse(data); return (j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content) || ""; }
-    catch (e) { return ""; }
-  });
-  return new Response(stream, { headers: Object.assign({ "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" }, ch) });
+  const text = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+  if (!text) {
+    const fr = (data.choices && data.choices[0] && data.choices[0].finish_reason) || "unknown";
+    return json({ error: "empty_reply", message: "The tutor came back empty (finish: " + fr + ").", raw: data }, 502, ch);
+  }
+  return textReply(text, ch);
 }
 
 async function callAnthropic(env, ch, system, messages, image) {
@@ -185,18 +169,22 @@ async function callAnthropic(env, ch, system, messages, image) {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-    body: JSON.stringify({ model: model, max_tokens: 600, system: system, stream: true, messages: am })
+    body: JSON.stringify({ model: model, max_tokens: 600, system: system, messages: am })
   });
-  if (!res.ok) {
-    const t = await res.text();
-    return json({ error: "anthropic_error", status: res.status, message: "The tutor had a problem (Anthropic " + res.status + ").", detail: t.slice(0, 400) }, 502, ch);
+
+  const data = await res.json().catch(function () { return null; });
+  if (!res.ok || !data) {
+    const msg = (data && data.error && data.error.message) || ("Anthropic returned status " + res.status);
+    return json({ error: "anthropic_error", status: res.status, message: "The tutor had a problem: " + msg }, 502, ch);
   }
-  const stream = sseToText(res.body, function (data) {
-    try {
-      const j = JSON.parse(data);
-      if (j.type === "content_block_delta" && j.delta && j.delta.type === "text_delta") return j.delta.text || "";
-      return "";
-    } catch (e) { return ""; }
-  });
-  return new Response(stream, { headers: Object.assign({ "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" }, ch) });
+  let text = "";
+  if (Array.isArray(data.content)) {
+    for (let i = 0; i < data.content.length; i++) {
+      if (data.content[i] && data.content[i].type === "text") text += data.content[i].text;
+    }
+  }
+  if (!text) {
+    return json({ error: "empty_reply", message: "The tutor came back empty.", raw: data }, 502, ch);
+  }
+  return textReply(text, ch);
 }
