@@ -130,7 +130,9 @@
   .ritem .nm small{color:var(--ink-faint);font-family:var(--mono);font-weight:400;font-size:11px;}
   .rbar{width:96px;flex:none;height:8px;border-radius:5px;background:var(--surface-2);overflow:hidden;}
   .rbar span{display:block;height:100%;border-radius:5px;}
-  .ritem .pct{font-family:var(--mono);font-size:12px;width:36px;text-align:right;}
+  .ritem .pct{font-family:var(--mono);font-size:12px;min-width:36px;text-align:right;}
+  .ritem .pct.todo{font-size:10px;color:var(--ink-faint);font-family:var(--label);letter-spacing:.03em;}
+  .ritem .pdot{width:9px;height:9px;border-radius:50%;flex:none;box-shadow:0 0 5px rgba(0,0,0,.35);}
   .modhead{display:flex;align-items:baseline;justify-content:space-between;margin:20px 0 8px;}
   .modhead h3{font-family:var(--display);font-weight:700;font-size:18px;margin:0;}
   .modhead .mpct{font-family:var(--mono);font-size:12px;color:var(--ink-soft);}
@@ -1033,11 +1035,24 @@
   function stat(v,l,c){return '<div class="stat '+c+'"><div class="v">'+v+'</div><div class="l">'+l+'</div></div>';}
   function renderRevise(){
     var ts=allTopics().map(function(t){t.e=eff(t.id);return t;}).filter(function(t){return t.e!==null;});
-    ts.sort(function(a,b){return a.e-b.e;});
+    // Tested topics first (lowest best-test score at the top); untested ones below, ordered by Pulse.
+    ts.sort(function(a,b){
+      var ascore=bestTest(a.id), bscore=bestTest(b.id);
+      if(ascore!==null&&bscore!==null)return ascore-bscore;
+      if(ascore!==null)return -1;
+      if(bscore!==null)return 1;
+      return a.e-b.e;
+    });
     var weak=ts.slice(0,5), el=$("#revise");
     if(!weak.length){el.innerHTML='<h3>Revise next</h3><p class="hint">Take a Pulse on a topic or sit a test and your weakest ones surface here.</p>';return;}
-    el.innerHTML='<h3>Revise next</h3><p class="hint">Weakest first, start at the top.</p>'+weak.map(function(t){var c=colorOf(t.e);
-      return '<div class="ritem"><div class="nm">'+t.name+' <small>'+t.mod+'</small></div><div class="rbar"><span style="width:'+Math.max(4,Math.round(t.e))+'%;background:'+cvar(c)+'"></span></div><div class="pct">'+Math.round(t.e)+'%</div></div>';}).join("");
+    el.innerHTML='<h3>Revise next</h3><p class="hint">Weakest first. The dot is your Pulse; the bar is your best test score.</p>'+weak.map(function(t){
+      var bt=bestTest(t.id), conf=st(t.id).conf, pc=conf?["","red","amber","green"][conf]:"";
+      var dot='<span class="pdot" style="background:'+(pc?cvar(pc):"var(--line)")+'" title="Your Pulse'+(pc?": "+pc:" not set")+'"></span>';
+      var right=bt!==null
+        ? '<div class="rbar"><span style="width:'+Math.max(4,Math.round(bt))+'%;background:'+cvar(colorOf(bt))+'"></span></div><div class="pct">'+Math.round(bt)+'%</div>'
+        : '<div class="rbar" title="No test sat yet"></div><div class="pct todo">not sat</div>';
+      return '<div class="ritem">'+dot+'<div class="nm">'+t.name+' <small>'+t.mod+'</small></div>'+right+'</div>';
+    }).join("");
   }
   function renderModules(){
     $("#modules").innerHTML=curModules().map(function(m){
